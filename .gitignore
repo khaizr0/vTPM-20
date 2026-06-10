@@ -1,0 +1,14 @@
+.vs/
+build/
+cert/
+release-*/
+vtpm_driver/x64/
+
+*.aml
+*.bin
+*.cat
+*.cer
+*.log
+*.obj
+*.pdb
+*.sys

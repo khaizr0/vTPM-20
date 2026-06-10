@@ -1,9 +1,11 @@
-# vTpm-20
+# vTPM2
 
 # 🚧 WORK IN PROGRESS (WIP) - UNDER ACTIVE DEVELOPMENT 🚧
 
 > 💡 **Note**: This is a personal hobby project created purely for fun and educational purposes.
 > 📅 **ETA**: TBD (Developed in my spare time, progress depends on interest/availability).
+
+Experimental Windows software TPM 2.0 (TpmPresent/TpmReady/Storage/Attestation: True).
 
 ---
 
@@ -32,10 +34,12 @@ A software-based **Virtual Trusted Platform Module (vTPM) 2.0** implementation d
 - ~~**Kernel-Mode Driver (`vtpm.sys`)**: Intercepts standard TPM commands and IOCTLs from Windows.~~
 - ~~**User-Mode Service Bridge (`vtpm_service.exe`)**: Proxies commands to the simulator, reads Measured Boot logs, replays PCR extensions, and registers the EK certificate in the Registry.~~
 - ~~**TPM 2.0 Simulator (`Simulator.exe`)**: Handles core TPM 2.0 cryptographic operations (based on Microsoft's reference implementation [ms-tpm-20-ref](https://github.com/microsoft/ms-tpm-20-ref)).~~
-- **Pre-Boot ACPI Table Injector (`VtpmPreboot.efi`)**: A standalone EFI application that dynamically registers custom `MSFT0101` TPM2 ACPI tables at boot time. This tells the Windows kernel that a TPM device is present on the hardware (or VM) level without requiring physical TPM hardware.
-- **Kernel-Mode Driver (`vtpm.sys` / `KernelTpm.c`)**: Registers a root-enumerated TPM device, intercepts standard Windows TPM commands and IOCTLs, and handles basic capability queries and PCR read/extend operations. It also features a built-in registry-based boot log loader (`LoadEventLog`) to replay boot events during driver initialization.
-- **User-Mode Service Bridge (`vtpm_service.exe`)**: Links the kernel driver to the simulator. It handles Endorsement Key (EK) certificate generation, registers it under `EKCertStore`, resolves the Storage Root Key (SRK) query via `IOCTL_TPM_GET_PERSISTENT_PUBLIC`, parses Measured Boot logs from `C:\Windows\Logs\MeasuredBoot\`, and replays/syncs PCR states.
-- **TPM 2.0 Simulator (`Simulator.exe`)**: Implements core TPM 2.0 cryptographic operations based on Microsoft's reference implementation ([ms-tpm-20-ref](https://github.com/microsoft/ms-tpm-20-ref)).
+- **`VtpmPreboot.efi`**: EFI loader that injects custom ACPI tables (`MSFT0101`) at boot.
+- **`vtpm.sys` (Kernel Driver)**: Root-enumerated TPM driver that intercepts commands/IOCTLs and loads event logs.
+- **`vtpm_service.exe` (Service)**: Bridge handling EK certs, SRK queries, and measured boot sync.
+- **`Simulator.exe`**: Core TPM 2.0 cryptoprocessor (Microsoft Reference Implementation).
+
+Repository contains source code and scripts only; build artifacts are excluded.
 
 ---
 
@@ -54,22 +58,42 @@ A software-based **Virtual Trusted Platform Module (vTPM) 2.0** implementation d
 
 ---
 
+## Requirements
+- Windows 11 x64 (Host/Guest, Admin)
+- VS 2022 + WDK
+- VirtualBox (VM only - experimental phase; architecture & code will be fully revised later)
+
+## Build & Test
+1. **Build (Host):** Run `.\build_driver_variants.ps1` and `.\package_kernel_poc.ps1`.
+2. **Configure VM (Host):** `.\configure_vbox_acpi_vtpm.ps1 -VmName win11`
+3. **Install (Guest):** Copy `release-kernel-poc` to guest, run `install_acpi_platform_vtpm.ps1` (Admin), and reboot.
+4. **Verify (Guest):** Run `tpmtool getdeviceinformation`
+5. **Rollback (Host):** `.\remove_vbox_acpi_vtpm.ps1 -VmName win11`
+
+---
+
 ## 📅 Todo List (Roadmap)
 
 ### Core Integration
-- [x] Integrate standard Windows TPM commands and IOCTL forwarding (`vtpm.sys` $\leftrightarrow$ `vtpm_service.exe`)
-- [x] Proxy TPM execution loops to the MS TPM reference simulator
-- [x] Read Measured Boot logs dynamically from Windows disk (`C:\Windows\Logs\MeasuredBoot\`)
-- [x] Replay and sync boot logs into the simulator's PCR banks on startup (resolving `TBS_E_NO_EVENT_LOG`)
-- [x] Autonomously provision and register EK Certificates in the Windows Registry (`EKCertStore`)
-- [x] Handle Storage Root Key (SRK) Public Key queries (`IOCTL_TPM_GET_PERSISTENT_PUBLIC`)
-- [x] Registry-based Measured Boot log replay (`SrtmEventLog`) within kernel driver initialization
-- [x] Standalone pre-boot loader (`VtpmPreboot.efi`) for dynamic ACPI table injection
+- [x] Forward TPM commands/IOCTLs (`vtpm.sys` $\leftrightarrow$ `vtpm_service.exe`)
+- [x] Proxy executions to MS TPM reference simulator
+- [x] Read measured boot logs from `C:\Windows\Logs\MeasuredBoot\`
+- [x] Sync boot logs to simulator PCRs (resolves `TBS_E_NO_EVENT_LOG`)
+- [x] Generate & register EK Certs in registry (`EKCertStore`)
+- [x] Handle SRK public key queries (`IOCTL_TPM_GET_PERSISTENT_PUBLIC`)
+- [x] Replay registry-based event logs in driver init
+- [x] Inject dynamic ACPI tables via EFI loader (`VtpmPreboot.efi`)
 
-### Security & Production Hardening
-- [ ] Implement machine-locked state persistence and encryption for the simulator's NV state
-- [ ] Support anti-rollback metadata (clock synchronization, reset and restart counts)
-- [ ] Implement custom synthetic WBCL event log stream generator
-- [ ] Conduct full compatibility testing with Windows Hello & BitLocker data volume protectors
-- [ ] Driver production signing setup for non-Test Mode Windows environments
+### Security & Hardening
+- [ ] Encrypt and lock simulator NV state
+- [ ] Add anti-rollback metadata (clock sync, reset/restart counters)
+- [ ] Generate synthetic WBCL event log streams
+- [ ] Test with Windows Hello & BitLocker
+- [ ] Driver production signing setup
 - [ ] ... and more
+
+---
+
+## ⚠️ Disclaimer
+- **Signing:** Requires Windows Test Mode (`TESTSIGNING`) or WHQL signature.
+- **Security:** Research software. Do not use for production secrets, BitLocker, or actual attestation.

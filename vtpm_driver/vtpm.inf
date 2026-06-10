@@ -1,0 +1,53 @@
+[Version]
+Signature   = "$WINDOWS NT$"
+Class       = SecurityDevices
+ClassGuid   = {d94ee5d8-d189-4994-83d2-f68d7d41b0e6}
+Provider    = %ManufacturerName%
+CatalogFile = vtpm.cat
+DriverVer   = 06/01/2026,1.0.0.0
+PnpLockdown = 1
+
+[DestinationDirs]
+DefaultDestDir = 13
+vtpm_Device_CoInstaller_CopyFiles = 11
+
+[SourceDisksNames]
+1 = %DiskName%,,,
+
+[SourceDisksFiles]
+vtpm.sys = 1,,
+
+;*****************************************
+; Install Section
+;*****************************************
+
+[Manufacturer]
+%ManufacturerName% = Standard,NTamd64
+
+[Standard.NTamd64]
+%vtpm.AcpiDeviceDesc% = vtpm_Device, ACPI\VTPM0001
+
+[vtpm_Device.NT]
+CopyFiles = Drivers_Dir
+
+[Drivers_Dir]
+vtpm.sys
+
+;-------------- Service installation
+[vtpm_Device.NT.Services]
+AddService = vtpm,%SPSVCINST_ASSOCSERVICE%, vtpm_Service_Inst
+
+; -------------- vtpm driver install sections
+[vtpm_Service_Inst]
+DisplayName    = %vtpm.SVCDESC%
+ServiceType    = 1               ; SERVICE_KERNEL_DRIVER
+StartType      = 3               ; SERVICE_DEMAND_START
+ErrorControl   = 1               ; SERVICE_ERROR_NORMAL
+ServiceBinary  = %13%\vtpm.sys
+
+[Strings]
+SPSVCINST_ASSOCSERVICE = 0x00000002
+ManufacturerName       = "Virtual TPM Project"
+DiskName               = "vTPM Installation Disk"
+vtpm.AcpiDeviceDesc    = "ACPI Virtual Trusted Platform Module 2.0"
+vtpm.SVCDESC           = "Virtual TPM 2.0 Service"
